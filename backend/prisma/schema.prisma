@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  email     String  @unique
+  password  String
+  firstName String
+  lastName  String?
+  role      Role    @default(USER)
+  phone     String?
+
+  isVerified     Boolean  @default(false)
+  Otp            String?  @default("")
+  forgotPassword Boolean? @default(false)
+
+  Bookings              Booking[]
+  AdContents            AdContent[]
+  AdminApprovalRequests AdminApprovalRequest[]
+  payments              Payment[]
+
+  @@map("users")
+}
+
+model RadioStation {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  stationName  String
+  location     String
+  contactEmail String
+  contactPhone String
+  description  String?
+
+  rjs                   RJ[]
+  advertisementSlots    AdvertisementSlot[]
+  bookings              Booking[]
+  adminApprovalRequests AdminApprovalRequest[]
+
+  @@map("radio_stations")
+}
+
+model RJ {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  stationId  String @db.ObjectId
+  rjName     String
+  showName   String
+  showTiming String
+
+  station  RadioStation        @relation(fields: [stationId], references: [id])
+  slots    AdvertisementSlot[]
+  bookings Booking[]
+
+  @@map("rjs")
+}
+
+model AdvertisementSlot {
+  id                 String     @id @default(auto()) @map("_id") @db.ObjectId
+  stationId          String     @db.ObjectId
+  rjId               String     @db.ObjectId
+  slotTime           DateTime
+  availabilityStatus SlotStatus @default(AVAILABLE)
+  price              Float
+
+  station  RadioStation @relation(fields: [stationId], references: [id])
+  rj       RJ           @relation(fields: [rjId], references: [id])
+  booking  Booking?
+
+  @@map("advertisement_slots")
+}
+
+
+model Booking {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String        @db.ObjectId
+  stationId     String        @db.ObjectId
+  rjId          String        @db.ObjectId
+  slotId        String        @db.ObjectId @unique
+  bookingStatus BookingStatus @default(PENDING)
+  bookingDate   DateTime      @default(now())
+
+  user     User              @relation(fields: [userId], references: [id])
+  station  RadioStation      @relation(fields: [stationId], references: [id])
+  rj       RJ                @relation(fields: [rjId], references: [id])
+  slot     AdvertisementSlot @relation(fields: [slotId], references: [id])
+  adContents            AdContent[]
+  payments              Payment[]
+  adminApprovalRequests AdminApprovalRequest[]
+
+  @@map("bookings")
+}
+
+
+model AdContent {
+  id            String @id @default(auto()) @map("_id") @db.ObjectId
+  bookingId     String @db.ObjectId
+  userId        String @db.ObjectId
+  filePath      String
+  adDescription String
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@map("ad_contents")
+}
+
+model Payment {
+  id                String        @id @default(auto()) @map("_id") @db.ObjectId
+  bookingId         String        @db.ObjectId @unique
+  userId            String        @db.ObjectId
+  amountInPaise     Int
+  currency          String        @default("INR")
+  paymentStatus     PaymentStatus @default(PENDING)
+  transactionId     String
+  paymentDate       DateTime      @default(now())
+
+  razorpayOrderId   String? @unique
+  razorpayPaymentId String? @unique
+  razorpaySignature String?
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@map("payments")
+}
+
+model AdminApprovalRequest {
+  id             String         @id @default(auto()) @map("_id") @db.ObjectId
+  bookingId      String?        @db.ObjectId
+  stationId      String?        @db.ObjectId
+  adminId        String         @db.ObjectId
+  approvalStatus ApprovalStatus @default(PENDING)
+  reviewDate     DateTime       @default(now())
+
+  booking Booking?      @relation(fields: [bookingId], references: [id])
+  station RadioStation? @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  admin   User          @relation(fields: [adminId], references: [id])
+
+  @@map("admin_approval_requests")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SlotStatus {
+  AVAILABLE
+  BOOKED
+}
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

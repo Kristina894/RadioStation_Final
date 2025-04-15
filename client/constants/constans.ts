@@ -1,0 +1,3 @@
+export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL
+export const RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEYID
+export const RAZORPAY_KEY_SECRET = process.env.NEXT_PUBLIC_RAZORPAY_KEYSECRET
